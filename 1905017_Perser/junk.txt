@@ -1,0 +1,175 @@
+{INDENTIFIER} {
+  string id=yytext;
+  string token="ID";
+  PrintLogFile(line_count,token,id);
+  PrintTokenFile(token,id);
+  bool hasInserted = st.insert(id,token);
+  if(hasInserted) st.printAllScopeTable();
+}
+
+\" {
+  BEGIN STRING;
+  startLine=line_count;
+  isMultiLineString=false;
+  str.clear();
+  //str.append(yytext);
+  str2.clear();
+  str2.append(yytext);
+}
+
+<STRING><<EOF>> {
+  //cout<<"Error at line no "<<line_count+1 << ": Unterminated string "<<str2<<endl<<endl;
+  PrintLogFileError(line_count+1,"UNFINISHED_STRING",str2);
+  str.clear();
+  str2.clear();
+  BEGIN INITIAL;
+  return 0;
+}
+
+<STRING>{NEWLINE} {
+  //cout<<"Error at line no "<<line_count<<": Unterminated string "<<str2<<endl<<endl;
+  PrintLogFileError(line_count,"UNFINISHED_STRING",str2);
+  str.clear();
+  str2.clear();
+  line_count++;
+  BEGIN INITIAL;
+}
+
+<STRING>\" {
+  //str.append(yytext);
+  str2.append(yytext);
+  if(isMultiLineString)
+    tokenout<<"<MULTI LINE STRING, "<<str<<">"<<endl;
+  else
+    tokenout<<"<SINGLE LINE STRING, "<<str<<">"<<endl;
+
+  if(isMultiLineString)
+    PrintLogFile(startLine,"MULTI LINE STRING",str2);
+  else 
+    PrintLogFile(startLine,"SINGLE LINE STRING",str2);
+
+  startLine=0;
+  str.clear();
+  str2.clear();
+  isMultiLineString=false;
+  BEGIN INITIAL;
+}
+
+<STRING>((\\){NEWLINE}) {
+  line_count++;
+  str2.append(yytext);
+  isMultiLineString=true;
+}
+<STRING>(\\[nt\\afrbv0\"\']) {
+  str2.append(yytext);
+  string temp=getEscapeChar(yytext[1]);
+  str.append(temp);
+}
+<STRING>. {
+  str.append(yytext);
+  str2.append(yytext);
+}
+
+{SINGLE_COMMENT} {
+  PrintLogFile(line_count,"SINGLE LINE COMMENT",yytext);
+
+  for(int i=0;i<strlen(yytext);i++){
+    if(yytext[i]=='\n'){
+      line_count++;
+    }
+  }
+}
+
+{MULTI_COMMENT} {
+  PrintLogFile(line_count,"MULTI LINE COMMENT",yytext);
+
+  for(int i=0;i<strlen(yytext);i++){
+    if(yytext[i]=='\n'){
+      line_count++;
+    }
+  }
+}
+*/
+
+
+
+
+
+
+
+/*
+int main(int argc,char *argv[]){
+  if(argc != 2){
+    cout<<"Please provide input file name and try again."<<endl;
+  }
+
+  FILE *fin= freopen(argv[1],"r",stdin);
+  if(fin==nullptr){
+    cout<<"Can't open specified file."<<endl;
+    return 0;
+  }
+  tokenout.open("token.txt");
+  freopen("log.txt","w",stdout);
+  yyin = fin;
+  yylex();
+  fclose(yyin);
+  return 0;
+}
+*/
+
+
+
+/*
+%type<symbol> variable factor term unary_expression simple_expression rel_expression logic_expression expression expression_statement statement statements compound_statement
+%type<symbol> type_specifier var_declaration func_declaration func_definition unit program declaration_list parameter_list argument_list arguments start
+*/
+
+
+PUT IT IN THE PARSER FILE
+-------------------------------------------------------------------------
+
+| PRINTLN LPAREN ID RPAREN SEMICOLON {
+  $$=new symbolInfo("PRINTLN LPAREN ID RPAREN SEMICOLON","statement",$1->getStartLine(),$5->getEndLine());
+  $$->childList.push_back($1);
+  $$->childList.push_back($2);
+  $$->childList.push_back($3);
+  $$->childList.push_back($4);
+  $$->childList.push_back($5);
+
+  bool isInserted = st.LookUp($3->getName());
+
+  if(!isInserted){
+    writeErrorFile("Undeclared variable "+$3->getName());
+  }
+  $$->necessaryList=$1->necessaryList;
+  writeLogFile("statement","PRINTLN LPAREN ID RPAREN SEMICOLON");
+  //parseTree<<"it has opened "<<$$->getName()<<endl;
+}
+
+PUT IT IN THE LEXICAL FILE
+_--------------------------------------------
+printf {
+  string token="PRINTLN";
+  string keyword="printf";
+  PrintLogFile(line_count, token, keyword);
+  yylval.symbol=new symbolInfo(yytext,"PRINTLN",yylineno,yylineno);
+  return PRINTLN;
+}
+
+
+func_definition: type_specifier ID LPAREN error {  if(errorLine == -1){
+                                            errorLine = yylineno;
+                                            error_count++;
+                                            errorout<<"Line# "<<$3->getStartLine()<<": Syntax error at parameter list of function definition"<<endl;
+                                            logout<<"Error at line no "<<errorLine<<" : syntax error"<<endl;
+                                            param.clear();
+                                            }} RPAREN {errorLine = -1;} compound_statement    {
+            logout<<"func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement "<<endl;
+            $$ = new SymbolInfo("type_specifier ID LPAREN parameter_list RPAREN compound_statement", "func_definition", $1->getStartLine(), $8->getEndLine());
+            SymbolInfo* symbol1 = new SymbolInfo("error", "parameter_list", $3->getEndLine(), $6->getStartLine());
+            $$->addChild($1);
+            $$->addChild($2);
+            $$->addChild($3);
+            $$->addChild(symbol1);
+            $$->addChild($6);
+            $$->addChild($8);
